@@ -53,7 +53,8 @@ Proyecto-ELT/
 └── README.md # Documentación
 
 ▶️ ## Uso
-1. Extracción y Carga
+
+### 1. Extracción y Carga
 
 Abrir y ejecutar el notebook 01_extracción.ipynb:
 
@@ -63,7 +64,7 @@ Guarda cada dataset en formato Delta Lake dentro de data/raw/.
 
 Usa extracción incremental para endpoints dinámicos y full para estáticos.
 
-2. Transformación
+### 2. Transformación
 
 Abrir y ejecutar el notebook 02_transformación.ipynb:
 
