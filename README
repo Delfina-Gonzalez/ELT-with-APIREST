@@ -67,11 +67,11 @@ Abre tu terminal o línea de comandos y ejecuta el siguiente comando para clonar
 
 ```bash
 
-git clone [https://github.com/Delfina-Gonzalez/ELT-with-APIREST.git](https://github.com/Delfina-Gonzalez/ELT-with-APIREST.git)
+git clone https://github.com/Delfina-Gonzalez/ELT-with-APIREST.git
 
 cd ELT-with-APIREST
 
-pip install -r requirements.txt
+pip install -r requirements.txt (se recomienda crear un entorno virtual)
 
 ---
 
