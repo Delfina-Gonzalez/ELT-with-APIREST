@@ -1,0 +1,37 @@
+name: Test Pipeline
+
+on: [push] # Se ejecuta cada vez que haces un 'git push'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # Usamos una máquina virtual de Ubuntu
+
+    steps:
+      - uses: actions/checkout@v4 # Paso 1: Clonar tu repositorio
+
+      - name: Set up Python # Paso 2: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies # Paso 3: Instalar las librerías
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install delta-spark # Reinstalar Delta-Spark por si acaso
+
+      - name: Install Hadoop Binaries # Paso 4: Instalar los binarios de Hadoop
+        run: |
+          wget https://archive.apache.org/dist/hadoop/common/hadoop-3.3.0/hadoop-3.3.0.tar.gz
+          tar -xzvf hadoop-3.3.0.tar.gz
+          sudo mv hadoop-3.3.0 /usr/local/hadoop
+          echo "HADOOP_HOME=/usr/local/hadoop" >> $GITHUB_ENV
+          echo "/usr/local/hadoop/bin" >> $GITHUB_PATH
+
+      - name: Execute Extraction and Load # Paso 5: Ejecutar el pipeline de Extracción
+        run: |
+          python notebooks/01_extracción.ipynb # Ejecutar tu notebook de extracción
+
+      - name: Execute Transformations # Paso 6: Ejecutar el pipeline de Transformación
+        run: |
+          python notebooks/02_transformación.ipynb # Ejecutar tu notebook de transformación

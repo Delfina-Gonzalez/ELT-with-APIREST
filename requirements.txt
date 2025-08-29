@@ -3,3 +3,4 @@ pyspark
 delta-spark
 pandas
 requests
+nbconvert
