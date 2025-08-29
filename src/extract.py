@@ -1,6 +1,6 @@
 import requests
 import pandas as pd
-from src.config import API_BASE_URL, ENDPOINTS
+from src.config import API_BASE_URL, ENDPOINTS 
 from requests.exceptions import HTTPError
 from json.decoder import JSONDecodeError
 

@@ -1,17 +1,17 @@
 from datetime import datetime
 from pathlib import Path
+# import configparser
 
-try:
-    # Esto funciona cuando el script se ejecuta directamente
-    BASE_DIR = Path(__file__).resolve().parent.parent
-except NameError:
-    # Esto funciona cuando se ejecuta desde un notebook
-    BASE_DIR = Path.cwd().parent
+# Esto funciona cuando el script se ejecuta directamente
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 DATA_RAW = BASE_DIR / "data" / "raw"
 DATA_PROCESSED = BASE_DIR / "data" / "processed"
 
 API_BASE_URL = "https://api.spacexdata.com/v4"
+# Obtener la clave del archivo .config. No se implementó porque la API no lo requiere.
+# "API_KEY": config.get("API_KEYS", "spacex_api_key", fallback=None)
+
 
 ENDPOINTS = {
     "latest_launch": "/launches/latest",

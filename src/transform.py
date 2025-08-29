@@ -1,4 +1,38 @@
 import pandas as pd
+from pyspark.sql import SparkSession
+from delta import configure_spark_with_delta_pip
+
+# Asegúrate de importar DATA_RAW de tu módulo de configuración
+from src.config import DATA_RAW
+
+def load_from_delta(endpoint_name: str) -> pd.DataFrame:
+    """
+    Lee un dataset de formato Delta Lake desde el data lake y lo devuelve como un DataFrame de Pandas.
+
+    Args:
+        endpoint_name (str): El nombre del endpoint de la API, que corresponde al nombre
+                             del subdirectorio en la capa 'raw' del data lake.
+
+    Returns:
+        pd.DataFrame: Un DataFrame de Pandas con los datos cargados.
+    """
+    # Inicialización de Spark con Delta
+    builder = SparkSession.builder \
+        .appName(f"Carga desde Delta {endpoint_name}") \
+        .master("local[*]") \
+        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
+        .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+
+    spark = configure_spark_with_delta_pip(builder).getOrCreate()
+
+    # Lee el directorio Delta Lake
+    df_spark = spark.read.format("delta").load(str(DATA_RAW / endpoint_name))
+
+    # Convierte el DataFrame de Spark a Pandas
+    df_pandas = df_spark.toPandas()
+
+    spark.stop()
+    return df_pandas
 
 def drop_duplicates(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -29,30 +63,6 @@ def handle_nulls(df: pd.DataFrame, cols: list, fill_value=None) -> pd.DataFrame:
         pd.DataFrame: El DataFrame con los valores nulos rellenados.
     """
     return df.fillna({col: fill_value for col in cols})
-
-def convert_column_types(df: pd.DataFrame, type_mappings: dict) -> pd.DataFrame:
-    """
-    Convierte el tipo de datos de columnas de un DataFrame.
-
-    La función itera sobre un diccionario de mapeos de columnas a tipos de datos,
-    intentando convertir cada columna a su tipo de destino. Si la conversión
-    falla, imprime un mensaje de error y continúa.
-
-    Args:
-        df (pd.DataFrame): El DataFrame de entrada.
-        type_mappings (dict): Un diccionario donde las claves son los nombres de
-            las columnas y los valores son los tipos de datos a los que se
-            quieren convertir.
-
-    Returns:
-        pd.DataFrame: El DataFrame con los tipos de datos de las columnas convertidos.
-    """
-    for col, dtype in type_mappings.items():
-        try:
-            df[col] = df[col].astype(dtype)
-        except Exception as e:
-            print(f"No se pudo convertir la columna {col} a {dtype}: {e}")
-    return df
 
 def rename_columns(df: pd.DataFrame, rename_map: dict) -> pd.DataFrame:
     """
