@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+import logging
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -15,6 +16,17 @@ ENDPOINTS = {
     "rockets": "/rockets",
     "dragons": "/dragons"
 }
+
+def setup_logger():
+    """
+    Configura un logger estándar para el proyecto.
+    """
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s"
+    )
+    return logging.getLogger("ProyectoELT")
+
 
 def get_partition_path(layer: str, endpoint_name: str, incremental: bool = True) -> str:
     """
