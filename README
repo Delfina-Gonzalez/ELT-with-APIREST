@@ -1,110 +1,78 @@
-# 🚀 Proyecto ELT con SpaceX API  
+# Proyecto ELT - SpaceX API
 
-Delfina González
-Trabajo integrador – Data Engineering, Centro de e-Learning UTN
-
----
-
-## 📌 Descripción  
-
-Este proyecto implementa un **pipeline de Extracción, Carga y Transformación (ELT)** utilizando la **API pública de SpaceX**.  
-
-Se cumplen los objetivos de la consigna:  
-- Extracción de **múltiples endpoints** de la API.  
-- Diferenciación entre **datos dinámicos (temporales)** y **datos estáticos**.  
-- Almacenamiento en **formato Delta Lake** con particiones por fecha (extracción incremental).  
-- Procesamiento y transformaciones de datos con **Pandas**.  
-- Modularización del código siguiendo buenas prácticas de ingeniería de datos.  
-
----
-
-## 🔗 Endpoints utilizados (SpaceX API)
-
-- **Dinámicos (se actualizan con el tiempo):**
-  - `/launches/latest` → Último lanzamiento.  
-  - `/launches/upcoming` → Próximos lanzamientos.  
-
-- **Estáticos (cambian rara vez):**
-  - `/rockets` → Información de cohetes.  
-  - `/dragons` → Información de cápsulas Dragon.  
+Este proyecto implementa un pipeline **ELT** (Extract, Load, Transform) utilizando la API pública de **SpaceX**.  
+El objetivo es construir un **data lake** organizado en capas (**bronze, silver, gold**) para almacenar, limpiar y transformar datos provenientes de distintos endpoints de la API.
 
 ---
 
 ## 📂 Estructura del proyecto
 
 Proyecto-ELT/
+│── data/
+│ ├── bronze/ # Datos crudos desde la API (full e incremental)
+│ ├── silver/ # Datos limpios y transformados
+│ └── gold/ # Datos enriquecidos/listos para análisis
 │
-├── data/ # Data Lake simulado
-│ ├── raw/ # Extracciones crudas (Delta Lake)
-│ └── processed/ # Datos transformados
+│── src/
+│ ├── config.py # Configuración del proyecto y paths
+│ ├── extract.py # Extracción de datos desde la API
+│ ├── load.py # Funciones de guardado en parquet
+│ ├── transform.py # Funciones de transformación
+│ └── utils.py # Logger y utilidades
 │
-├── notebooks/ # Jupyter Notebooks
-│ ├── 01_extracción.ipynb
-│ └── 02_transformación.ipynb
-│
-├── src/ # Código modular
-│ ├── config.py
-│ ├── extract.py
-│ ├── load.py
-│ ├── transform.py
-│ └── utils.py
-│
-├── requirements.txt # Dependencias
-└── README.md # Documentación
+│── 01_extracción.ipynb # Ejemplo de extracción (full e incremental)
+│── 02_transformación.ipynb # Ejemplo de transformaciones y guardado en silver
+│── requirements.txt
+│── README.md
+│── .gitignore
+
 
 ---
-## Instalación
 
-Para obtener una copia local de este proyecto, sigue estos pasos.
+## 🚀 Funcionalidades
 
-### Requisitos previos
+### Extracción
+- Obtiene datos desde distintos **endpoints de la API SpaceX**.
+- Diferencia entre **extracción full** (sin particionar) e **incremental** (particionado por fecha).
+- Almacena los datos crudos en **data/bronze** en formato **Parquet**.
 
-Necesitas tener Python y `pip` instalados en tu máquina.
+### Transformaciones
+- Se aplican desde la capa **bronze**:
+  - Eliminación de duplicados.
+  - Manejo de valores nulos.
+  - Renombrado de columnas.
+  - Creación de columnas derivadas.
+- Los resultados se guardan en **data/silver**.
 
-### Clonar el repositorio
+### Organización del Data Lake
+- **Bronze** → Datos crudos de la API (raw).  
+- **Silver** → Datos limpios y consistentes.  
+- **Gold** → Datos enriquecidos o métricas finales (ejemplo: KPIs).
 
-Abre tu terminal o línea de comandos y ejecuta el siguiente comando para clonar el repositorio:
+---
 
+## 🛠 Requisitos
+
+- Python 3.10+
+- Librerías listadas en `requirements.txt`
+
+Instalación:
 ```bash
+pip install -r requirements.txt
 
-git clone https://github.com/Delfina-Gonzalez/ELT-with-APIREST.git
+## ▶️ Ejecución
 
-cd ELT-with-APIREST
+- Extracción (notebook 01_extracción.ipynb)
 
-pip install -r requirements.txt (se recomienda crear un entorno virtual)
+Extrae datos de al menos dos endpoints.
 
----
+Guarda resultados en bronze diferenciando full e incremental.
 
+- Transformación (notebook 02_transformación.ipynb)
 
-▶️ ## Uso
+Carga datos desde bronze.
 
-### 1. Extracción y Carga
+Aplica transformaciones.
 
-Abrir y ejecutar el notebook 01_extracción.ipynb:
-
-Descarga los datasets desde la API de SpaceX.
-
-Guarda cada dataset en formato Delta Lake dentro de data/raw/.
-
-Usa extracción incremental para endpoints dinámicos y full para estáticos.
-
-### 2. Transformación
-
-Abrir y ejecutar el notebook 02_transformación.ipynb:
-
-Aplica las siguientes transformaciones con Pandas:
-
-Eliminación de duplicados.
-
-Manejo de nulos.
-
-Renombrado de columnas.
-
-Conversión de tipos.
-
-Creación de nueva columna.
-
-Unión (JOIN) entre DataFrames.
-
-Guarda resultados en data/processed/.
+Guarda resultados en silver.
 

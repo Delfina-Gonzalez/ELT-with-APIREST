@@ -1,113 +1,88 @@
 import pandas as pd
-from pyspark.sql import SparkSession
-from delta import configure_spark_with_delta_pip
+import numpy as np
+from pathlib import Path
+from src.config import DATA_BRONZE, DATA_SILVER
 
-# Asegúrate de importar DATA_RAW de tu módulo de configuración
-from src.config import DATA_RAW
-
-def load_from_delta(endpoint_name: str) -> pd.DataFrame:
+def load_from_parquet(endpoint_name: str, layer="bronze") -> pd.DataFrame:
     """
-    Lee un dataset de formato Delta Lake desde el data lake y lo devuelve como un DataFrame de Pandas.
-
-    Args:
-        endpoint_name (str): El nombre del endpoint de la API, que corresponde al nombre
-                             del subdirectorio en la capa 'raw' del data lake.
-
-    Returns:
-        pd.DataFrame: Un DataFrame de Pandas con los datos cargados.
+    Lee un dataset en formato Parquet desde el data lake.
     """
-    # Inicialización de Spark con Delta
-    builder = SparkSession.builder \
-        .appName(f"Carga desde Delta {endpoint_name}") \
-        .master("local[*]") \
-        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
-        .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+    base = {"bronze": DATA_BRONZE, "silver": DATA_SILVER}[layer]
+    path = Path(base) / endpoint_name
+    files = list(path.rglob("*.parquet"))
 
-    spark = configure_spark_with_delta_pip(builder).getOrCreate()
+    if not files:
+        print(f"[WARN] No se encontraron archivos para {endpoint_name} en {layer}")
+        return pd.DataFrame()
 
-    # Lee el directorio Delta Lake
-    df_spark = spark.read.format("delta").load(str(DATA_RAW / endpoint_name))
+    dfs = [pd.read_parquet(f) for f in files]
+    return pd.concat(dfs, ignore_index=True)
 
-    # Convierte el DataFrame de Spark a Pandas
-    df_pandas = df_spark.toPandas()
+# Normalización de columnas complejas
+def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convierte columnas con arrays numpy a strings.
+    Esto permite aplicar drop_duplicates y otras transformaciones sin error.
+    """
 
-    spark.stop()
-    return df_pandas
+    for col in df:
+        if df[col].apply(lambda x: isinstance(x, np.ndarray)).any():
+            df[col] = df[col].apply(lambda x: str(x) if isinstance(x, np.ndarray) else x)
+    return df
 
+# 🔹 Transformaciones
 def drop_duplicates(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Elimina filas duplicadas de un DataFrame de Pandas.
-
-    Args:
-        df (pd.DataFrame): El DataFrame de entrada.
-
-    Returns:
-        pd.DataFrame: Un nuevo DataFrame sin filas duplicadas.
-    """
     return df.drop_duplicates()
 
 def handle_nulls(df: pd.DataFrame, cols: list, fill_value=None) -> pd.DataFrame:
-    """
-    Rellena los valores nulos en columnas específicas de un DataFrame.
-
-    Esta función toma un DataFrame, una lista de nombres de columnas y un valor
-    para reemplazar los valores nulos en esas columnas.
-
-    Args:
-        df (pd.DataFrame): El DataFrame de entrada.
-        cols (list): Una lista de los nombres de las columnas a procesar.
-        fill_value (any, opcional): El valor con el que se llenarán los nulos.
-            Por defecto es None.
-
-    Returns:
-        pd.DataFrame: El DataFrame con los valores nulos rellenados.
-    """
     return df.fillna({col: fill_value for col in cols})
 
-def rename_columns(df: pd.DataFrame, rename_map: dict) -> pd.DataFrame:
-    """
-    Renombra columnas de un DataFrame de Pandas.
+def rename_columns(df: pd.DataFrame, endpoint_name: str) -> pd.DataFrame:
+    
+    rename_map = {}
 
-    Args:
-        df (pd.DataFrame): El DataFrame de entrada.
-        rename_map (dict): Un diccionario donde las claves son los nombres
-            actuales de las columnas y los valores son los nuevos nombres.
-
-    Returns:
-        pd.DataFrame: Un nuevo DataFrame con las columnas renombradas.
-    """
+    if endpoint_name == "rockets":
+        rename_map = {
+            "name": "rocket_name",
+            "type": "rocket_type",
+            "active": "is_active",
+            "stages": "num_stages",
+            "boosters": "num_boosters",
+            "cost_per_launch": "launch_cost_usd",
+            "success_rate_pct": "success_rate_percent",
+            "first_flight": "first_flight_date",
+            "country": "manufacturing_country",
+            "company": "manufacturer",
+            "payload_weights": "payload_weights_info",
+            "flickr_images": "image_urls",
+            "engines.number": "engines_count",
+            "engines.type": "engine_type",
+            "engines.version": "engine_version",
+            "engines.layout": "engine_layout",
+            "engines.engine_loss_max": "engine_loss_max",
+            "engines.propellant_1": "propellant_primary",
+            "engines.propellant_2": "propellant_secondary",
+            "engines.thrust_to_weight": "thrust_to_weight_ratio",
+            "landing_legs.number": "landing_legs_count",
+            "landing_legs.material": "landing_legs_material"
+        }
     return df.rename(columns=rename_map)
 
-def create_new_column(df: pd.DataFrame, new_col: str, func) -> pd.DataFrame:
+def expand_payload_weights(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Crea una nueva columna en un DataFrame aplicando una función a cada fila.
-
-    Args:
-        df (pd.DataFrame): El DataFrame de entrada.
-        new_col (str): El nombre de la nueva columna a crear.
-        func (callable): Una función que se aplicará a cada fila del DataFrame.
-
-    Returns:
-        pd.DataFrame: El DataFrame con la nueva columna agregada.
+    Expande la columna 'payload_weights' en columnas separadas,
+    dejando solo valores en kilogramos (kg).
+    Ejemplo: payload_leo_kg, payload_gto_kg, payload_mars_kg...
     """
-    df[new_col] = df.apply(func, axis=1)
+    if "payload_weights_info" not in df.columns:
+        return df
+
+    # Crear columnas nuevas solo en kg
+    for idx, row in df.iterrows():
+        if isinstance(row["payload_weights_info"], list):
+            for payload in row["payload_weights_info"]:
+                name = payload.get("id", payload.get("name", "unknown")).lower()
+                df.at[idx, f"payload_{name}_kg"] = payload.get("kg")
+
     return df
 
-def join_dataframes(df1: pd.DataFrame, df2: pd.DataFrame, key: str, how="left") -> pd.DataFrame:
-    """
-    Combina dos DataFrames de Pandas basados en una columna clave.
-
-    Utiliza el método `merge` para unir dos DataFrames de manera similar a un
-    JOIN de SQL.
-
-    Args:
-        df1 (pd.DataFrame): El DataFrame izquierdo.
-        df2 (pd.DataFrame): El DataFrame derecho.
-        key (str): El nombre de la columna clave en la que se realizará el JOIN.
-        how (str, opcional): El tipo de join a realizar ('left', 'right', 'outer', 'inner').
-            Por defecto es 'left'.
-
-    Returns:
-        pd.DataFrame: El DataFrame resultante de la unión.
-    """
-    return df1.merge(df2, on=key, how=how)
