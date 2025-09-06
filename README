@@ -1,4 +1,4 @@
-# Proyecto ELT - SpaceX API
+# 🚀 Proyecto ELT con SpaceX API  
 
 Este proyecto implementa un pipeline **ELT** (Extract, Load, Transform) utilizando la API pública de **SpaceX**.  
 El objetivo es construir un **data lake** organizado en capas (**bronze, silver, gold**) para almacenar, limpiar y transformar datos provenientes de distintos endpoints de la API.

@@ -11,7 +11,6 @@ DATA_GOLD   = BASE_DIR / "data" / "gold"
 API_BASE_URL = "https://api.spacexdata.com/v4"
 
 ENDPOINTS = {
-    "latest_launch": "/launches/latest",
     "upcoming_launches": "/launches/upcoming",
     "rockets": "/rockets",
     "dragons": "/dragons"
