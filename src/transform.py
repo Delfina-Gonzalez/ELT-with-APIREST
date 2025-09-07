@@ -3,21 +3,46 @@ import numpy as np
 from pathlib import Path
 from src.config import DATA_BRONZE, DATA_SILVER
 
-def load_from_parquet(endpoint_name: str, layer="bronze") -> pd.DataFrame:
+def load_from_parquet(endpoint_name: str, layer: str = "bronze") -> pd.DataFrame:
     """
     Lee un dataset en formato Parquet desde el data lake.
-    """
-    base = {"bronze": DATA_BRONZE, "silver": DATA_SILVER}[layer]
-    path = Path(base) / endpoint_name
-    files = list(path.rglob("*.parquet"))
 
-    if not files:
-        print(f"[WARN] No se encontraron archivos para {endpoint_name} en {layer}")
+    Args:
+        endpoint_name (str): El nombre del endpoint de la API.
+        layer (str): La capa del data lake ("bronze" o "silver").
+                     Por defecto es "bronze".
+
+    Returns:
+        pd.DataFrame: Un DataFrame de Pandas con los datos cargados.
+    """
+    # 1. Mapea la capa a su ruta base
+    layer_map = {"bronze": DATA_BRONZE, "silver": DATA_SILVER}
+    base_path = layer_map.get(layer)
+
+    if not base_path:
+        print(f"[ERROR] Capa '{layer}' no válida. Debe ser 'bronze' o 'silver'.")
         return pd.DataFrame()
 
-    dfs = [pd.read_parquet(f) for f in files]
-    return pd.concat(dfs, ignore_index=True)
+    # 2. Busca archivos en las subcarpetas 'full' e 'incremental'
+    # .rglob() encuentra todos los archivos .parquet, sin importar su nivel de anidación.
+    path = Path(base_path) / endpoint_name
+    files = list(path.rglob("*.parquet"))
 
+    # 3. Manejo de archivos no encontrados
+    if not files:
+        print(f"[WARN] No se encontraron archivos .parquet para '{endpoint_name}' en la capa '{layer}'.")
+        return pd.DataFrame()
+
+    # 4. Lee y concatena todos los archivos encontrados
+    try:
+        # Lee cada archivo .parquet encontrado
+        dfs = [pd.read_parquet(f) for f in files]
+        # Concatena todos los DataFrames en uno solo
+        return pd.concat(dfs, ignore_index=True)
+    except Exception as e:
+        print(f"[ERROR] Ocurrió un error al leer los archivos: {e}")
+        return pd.DataFrame()
+    
 # Normalización de columnas complejas
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
